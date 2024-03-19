@@ -1,0 +1,15 @@
+[package]
+name = "kraken-rust"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = "0.11"
+url = "2.5.0" # Check https://crates.io/crates/url for the latest version
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = { version = "0.15", features = ["native-tls"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+futures-util = "0.3"
