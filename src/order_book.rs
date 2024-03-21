@@ -1,4 +1,6 @@
+use crc32fast::Hasher;
 use serde_json::Value;
+use std::cmp::Ordering;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -15,7 +17,7 @@ pub struct OrderBook {
 }
 
 impl OrderBook {
-    fn new(depth: usize) -> Self {
+    pub fn new(depth: usize) -> Self {
         OrderBook {
             depth,
             bids: Vec::with_capacity(depth),
@@ -24,7 +26,7 @@ impl OrderBook {
     }
 
     // Initializes the order book with a snapshot
-    fn initialize(&mut self, snapshot: &Value) {
+    pub fn initialize(&mut self, snapshot: &Value) {
         // Extracts the snapshot data from the received message format
         if let Some(snapshot_data) = snapshot.get(1) {
             // Parsing asks
@@ -143,6 +145,43 @@ impl OrderBook {
             .sort_by(|a, b| a.price.partial_cmp(&b.price).unwrap());
         self.bids
             .sort_by(|a, b| b.price.partial_cmp(&a.price).unwrap());
+    }
+
+    pub fn calculate_checksum(&self) -> u32 {
+        let mut input_string = String::new();
+
+        // Process asks
+        for ask in self.asks.iter().take(10) {
+            let price = format!("{:.5}", ask.price)
+                .replace(".", "")
+                .trim_start_matches('0')
+                .to_string();
+            let volume = format!("{:.8}", ask.volume)
+                .replace(".", "")
+                .trim_start_matches('0')
+                .to_string();
+            input_string.push_str(&price);
+            input_string.push_str(&volume);
+        }
+
+        // Process bids
+        for bid in self.bids.iter().take(10) {
+            // Ensure high to low order for bids
+            let price = format!("{:.5}", bid.price)
+                .replace(".", "")
+                .trim_start_matches('0')
+                .to_string();
+            let volume = format!("{:.8}", bid.volume)
+                .replace(".", "")
+                .trim_start_matches('0')
+                .to_string();
+            input_string.push_str(&price);
+            input_string.push_str(&volume);
+        }
+
+        let mut hasher = Hasher::new();
+        hasher.update(input_string.as_bytes());
+        hasher.finalize()
     }
 }
 
@@ -410,5 +449,39 @@ mod tests {
 
         assert_eq!(order_book.asks, expected_order_book.asks);
         assert_eq!(order_book.bids, expected_order_book.bids);
+    }
+
+    #[test]
+    fn test_order_book_checksum() {
+        let mut order_book = OrderBook::new(10);
+        order_book.initialize(&serde_json::json!(
+            [0,
+            {
+                "as": [
+                    [ "0.05005", "0.00000500", "1582905487.684110" ],
+                    [ "0.05010", "0.00000500", "1582905486.187983" ],
+                    [ "0.05015", "0.00000500", "1582905484.480241" ],
+                    [ "0.05020", "0.00000500", "1582905486.645658" ],
+                    [ "0.05025", "0.00000500", "1582905486.859009" ],
+                    [ "0.05030", "0.00000500", "1582905488.601486" ],
+                    [ "0.05035", "0.00000500", "1582905488.357312" ],
+                    [ "0.05040", "0.00000500", "1582905488.785484" ],
+                    [ "0.05045", "0.00000500", "1582905485.302661" ],
+                    [ "0.05050", "0.00000500", "1582905486.157467" ] ],
+                "bs": [
+                    [ "0.05000", "0.00000500", "1582905487.439814" ],
+                    [ "0.04995", "0.00000500", "1582905485.119396" ],
+                    [ "0.04990", "0.00000500", "1582905486.432052" ],
+                    [ "0.04980", "0.00000500", "1582905480.609351" ],
+                    [ "0.04975", "0.00000500", "1582905476.793880" ],
+                    [ "0.04970", "0.00000500", "1582905486.767461" ],
+                    [ "0.04965", "0.00000500", "1582905481.767528" ],
+                    [ "0.04960", "0.00000500", "1582905487.378907" ],
+                    [ "0.04955", "0.00000500", "1582905483.626664" ],
+                    [ "0.04950", "0.00000500", "1582905488.509872" ] ]
+                }
+            ]
+        ));
+        assert_eq!(order_book.calculate_checksum(), 974947235);
     }
 }
