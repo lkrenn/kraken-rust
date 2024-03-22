@@ -27,33 +27,30 @@ impl OrderBook {
 
     // Initializes the order book with a snapshot
     pub fn initialize(&mut self, snapshot: &Value) {
-        // Extracts the snapshot data from the received message format
-        if let Some(snapshot_data) = snapshot.get(1) {
-            // Parsing asks
-            if let Some(asks) = snapshot_data.get("as").and_then(Value::as_array) {
-                self.asks = asks
-                    .iter()
-                    .take(self.depth)
-                    .filter_map(|ask| {
-                        let price = ask.get(0)?.as_str()?.parse::<f64>().ok()?;
-                        let volume = ask.get(1)?.as_str()?.parse::<f64>().ok()?;
-                        Some(Level { price, volume })
-                    })
-                    .collect();
-            }
+        // Parsing asks
+        if let Some(asks) = snapshot.get("as").and_then(Value::as_array) {
+            self.asks = asks
+                .iter()
+                .take(self.depth)
+                .filter_map(|ask| {
+                    let price = ask.get(0)?.as_str()?.parse::<f64>().ok()?;
+                    let volume = ask.get(1)?.as_str()?.parse::<f64>().ok()?;
+                    Some(Level { price, volume })
+                })
+                .collect();
+        }
 
-            // Parsing bids
-            if let Some(bids) = snapshot_data.get("bs").and_then(Value::as_array) {
-                self.bids = bids
-                    .iter()
-                    .take(self.depth)
-                    .filter_map(|bid| {
-                        let price = bid.get(0)?.as_str()?.parse::<f64>().ok()?;
-                        let volume = bid.get(1)?.as_str()?.parse::<f64>().ok()?;
-                        Some(Level { price, volume })
-                    })
-                    .collect();
-            }
+        // Parsing bids
+        if let Some(bids) = snapshot.get("bs").and_then(Value::as_array) {
+            self.bids = bids
+                .iter()
+                .take(self.depth)
+                .filter_map(|bid| {
+                    let price = bid.get(0)?.as_str()?.parse::<f64>().ok()?;
+                    let volume = bid.get(1)?.as_str()?.parse::<f64>().ok()?;
+                    Some(Level { price, volume })
+                })
+                .collect();
         }
 
         // Sort bids and asks
